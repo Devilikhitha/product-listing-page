@@ -2,3 +2,4 @@ node_modules/
 public/client.js
 server.bundle.js
 .env
+/data/users.json

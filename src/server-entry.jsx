@@ -380,40 +380,99 @@ app.get('/api/auth/logout', (req, res) => {
  * Root: show products only if user signed in.
  * If not signed in, redirect to /signin (so signin page is the app entry)
  */
+// app.get('/', async (req, res) => {
+//   try {
+//     const token = req.cookies && req.cookies.token;
+//     if (!token) {
+//       // not logged in -> redirect to signin page (so sign-in is the app entry)
+//       return res.redirect('/signin');
+//     }
+
+//     // verify token
+//     let user = null;
+//     try {
+//       const decoded = jwt.verify(token, JWT_SECRET);
+//       user = { email: decoded.email };
+//     } catch (err) {
+//       // invalid token -> clear cookie and redirect to signin
+//       res.clearCookie('token', { path: '/' });
+//       return res.redirect('/signin');
+//     }
+
+//     // fetch products/categories and render PLP for authenticated user
+//     const [productsRes, categoriesRes] = await Promise.all([
+//       axios.get('https://fakestoreapi.com/products'),
+//       axios.get('https://fakestoreapi.com/products/categories')
+//     ]);
+//     const products = productsRes.data;
+//     const categories = categoriesRes.data;
+//     const preloadedState = { products, categories, user };
+//     const appHtml = renderToString(React.createElement(App, { ssrState: preloadedState, page: 'home' }));
+//     return res.send(renderPage(appHtml, preloadedState, 'home'));
+//   } catch (e) {
+//     console.error('Home render error', e);
+//     return res.status(500).send('Server error');
+//   }
+// });
+
+
+
 app.get('/', async (req, res) => {
   try {
     const token = req.cookies && req.cookies.token;
     if (!token) {
-      // not logged in -> redirect to signin page (so sign-in is the app entry)
       return res.redirect('/signin');
     }
 
-    // verify token
+    // verify token and derive user
     let user = null;
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
       user = { email: decoded.email };
     } catch (err) {
-      // invalid token -> clear cookie and redirect to signin
       res.clearCookie('token', { path: '/' });
       return res.redirect('/signin');
     }
 
-    // fetch products/categories and render PLP for authenticated user
-    const [productsRes, categoriesRes] = await Promise.all([
-      axios.get('https://fakestoreapi.com/products'),
-      axios.get('https://fakestoreapi.com/products/categories')
-    ]);
-    const products = productsRes.data;
-    const categories = categoriesRes.data;
+    let products = [];
+    let categories = [];
+
+    try {
+      // 🔹 Try to fetch from FakeStoreAPI normally
+      const [productsRes, categoriesRes] = await Promise.all([
+        axios.get('https://fakestoreapi.com/products'),
+        axios.get('https://fakestoreapi.com/products/categories')
+      ]);
+      products = productsRes.data;
+      categories = categoriesRes.data;
+    } catch (err) {
+      console.error(
+        'Failed to fetch from FakeStoreAPI, using mock data instead:',
+        err.toString()
+      );
+
+      // 🔹 Fallback: load local mock data from mock-data/products.json
+      const mockPath = path.join(process.cwd(), 'mock-data', 'products.json');
+      const raw = fs.readFileSync(mockPath, 'utf8');
+      const mockProducts = JSON.parse(raw);
+
+      products = mockProducts;
+      categories = Array.from(
+        new Set(mockProducts.map((p) => p.category))
+      );
+    }
+
     const preloadedState = { products, categories, user };
-    const appHtml = renderToString(React.createElement(App, { ssrState: preloadedState, page: 'home' }));
+    const appHtml = renderToString(
+      React.createElement(App, { ssrState: preloadedState, page: 'home' })
+    );
     return res.send(renderPage(appHtml, preloadedState, 'home'));
   } catch (e) {
     console.error('Home render error', e);
     return res.status(500).send('Server error');
   }
 });
+
 
 /**
  * /signin: serve sign-in page when not authenticated.
@@ -462,6 +521,32 @@ app.get('/signup', (req, res) => {
 /**
  * Product detail page: only accessible when logged in
  */
+// app.get('/product/:id', async (req, res) => {
+//   const token = req.cookies && req.cookies.token;
+//   if (!token) return res.redirect('/signin');
+
+//   try {
+//     jwt.verify(token, JWT_SECRET);
+//   } catch (err) {
+//     res.clearCookie('token', { path: '/' });
+//     return res.redirect('/signin');
+//   }
+
+//   const id = req.params.id;
+//   try {
+//     const productRes = await axios.get(`https://fakestoreapi.com/products/${id}`);
+//     const product = productRes.data;
+//     const preloadedState = { product };
+//     const appHtml = renderToString(React.createElement(App, { ssrState: preloadedState, page: 'product' }));
+//     return res.send(renderPage(appHtml, preloadedState, 'product'));
+//   } catch (e) {
+//     console.error('Product render error', e);
+//     return res.status(404).send('Not found');
+//   }
+// });
+
+
+
 app.get('/product/:id', async (req, res) => {
   const token = req.cookies && req.cookies.token;
   if (!token) return res.redirect('/signin');
@@ -474,17 +559,50 @@ app.get('/product/:id', async (req, res) => {
   }
 
   const id = req.params.id;
+
   try {
+    // 🔹 First try real API
     const productRes = await axios.get(`https://fakestoreapi.com/products/${id}`);
     const product = productRes.data;
+
     const preloadedState = { product };
-    const appHtml = renderToString(React.createElement(App, { ssrState: preloadedState, page: 'product' }));
+    const appHtml = renderToString(
+      React.createElement(App, { ssrState: preloadedState, page: 'product' })
+    );
     return res.send(renderPage(appHtml, preloadedState, 'product'));
-  } catch (e) {
-    console.error('Product render error', e);
-    return res.status(404).send('Not found');
+  } catch (err) {
+    console.error(
+      `Failed to fetch product ${id} from FakeStoreAPI, trying mock data:`,
+      err.toString()
+    );
+
+    // 🔹 Fallback: read from mock-data/products.json
+    try {
+      const mockPath = path.join(process.cwd(), 'mock-data', 'products.json');
+      const raw = fs.readFileSync(mockPath, 'utf8');
+      const mockProducts = JSON.parse(raw);
+
+      const numericId = Number(id);
+      const product = mockProducts.find((p) => p.id === numericId);
+
+      if (!product) {
+        return res.status(404).send('Not found');
+      }
+
+      const preloadedState = { product };
+      const appHtml = renderToString(
+        React.createElement(App, { ssrState: preloadedState, page: 'product' })
+      );
+      return res.send(renderPage(appHtml, preloadedState, 'product'));
+    } catch (fallbackErr) {
+      console.error('Product fallback error:', fallbackErr.toString());
+      return res.status(404).send('Not found');
+    }
   }
 });
+
+
+
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);

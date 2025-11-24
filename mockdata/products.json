@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "title": "Mock Leather Jacket",
+    "price": 59.99,
+    "description": "A stylish mock jacket for the demo environment.",
+    "category": "men's clothing",
+    "image": "https://fakestoreapi.com/img/71YXzeOuslL._AC_UY879_.jpg",
+    "rating": { "rate": 4.2, "count": 120 }
+  },
+  {
+    "id": 2,
+    "title": "Mock Backpack",
+    "price": 39.99,
+    "description": "Perfect everyday backpack for demo purposes.",
+    "category": "bags",
+    "image": "https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg",
+    "rating": { "rate": 4.7, "count": 80 }
+  },
+  {
+    "id": 3,
+    "title": "Mock T-Shirt",
+    "price": 19.99,
+    "description": "Comfortable cotton tee for everyday wear.",
+    "category": "men's clothing",
+    "image": "https://fakestoreapi.com/img/71HblAHs5xL._AC_UY879_-2.jpg",
+    "rating": { "rate": 4.0, "count": 45 }
+  }
+]
