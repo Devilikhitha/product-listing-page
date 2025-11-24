@@ -572,7 +572,7 @@ app.get('/product/:id', async (req, res) => {
       React.createElement(App, { ssrState: preloadedState, page: 'product' })
     );
     return res.send(renderPage(appHtml, preloadedState, 'product'));
-  } catch (err) {const mo
+  } catch (err) {
     console.error(
       `Failed to fetch product ${id} from FakeStoreAPI, trying mock data:`,
       err.toString()
