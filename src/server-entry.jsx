@@ -224,6 +224,8 @@ import axios from 'axios';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import App from './App.jsx';
+import mockProducts from './mock-data/products.json';
+
 
 
 // ---- Simple JSON file user store ----
@@ -417,6 +419,67 @@ app.get('/api/auth/logout', (req, res) => {
 
 
 
+// app.get('/', async (req, res) => {
+//   try {
+//     const token = req.cookies && req.cookies.token;
+//     if (!token) {
+//       return res.redirect('/signin');
+//     }
+
+//     // verify token and derive user
+//     let user = null;
+//     try {
+//       const decoded = jwt.verify(token, JWT_SECRET);
+//       user = { email: decoded.email };
+//     } catch (err) {
+//       res.clearCookie('token', { path: '/' });
+//       return res.redirect('/signin');
+//     }
+
+//     let products = [];
+//     let categories = [];
+
+//     try {
+//       // 🔹 Try to fetch from FakeStoreAPI normally
+//       const [productsRes, categoriesRes] = await Promise.all([
+//         axios.get('https://fakestoreapi.com/products'),
+//         axios.get('https://fakestoreapi.com/products/categories')
+//       ]);
+//       products = productsRes.data;
+//       categories = categoriesRes.data;
+//     } catch (err) {
+//       console.error(
+//         'Failed to fetch from FakeStoreAPI, using mock data instead:',
+//         err.toString()
+//       );
+
+//       // 🔹 Fallback: load local mock data from mock-data/products.json
+//       const mockPath = path.join(process.cwd(), 'mock-data', 'products.json');
+//       // const mockPath = path.resolve('mock-data/products.json');
+
+//       const raw = fs.readFileSync(mockPath, 'utf8');
+//       const mockProducts = JSON.parse(raw);
+
+//       products = mockProducts;
+//       categories = Array.from(
+//         new Set(mockProducts.map((p) => p.category))
+//       );
+//     }
+
+//     const preloadedState = { products, categories, user };
+//     const appHtml = renderToString(
+//       React.createElement(App, { ssrState: preloadedState, page: 'home' })
+//     );
+//     return res.send(renderPage(appHtml, preloadedState, 'home'));
+//   } catch (e) {
+//     console.error('Home render error', e);
+//     return res.status(500).send('Server error');
+//   }
+// });
+
+
+
+
 app.get('/', async (req, res) => {
   try {
     const token = req.cookies && req.cookies.token;
@@ -438,7 +501,7 @@ app.get('/', async (req, res) => {
     let categories = [];
 
     try {
-      // 🔹 Try to fetch from FakeStoreAPI normally
+      // 🔹 Try real API first
       const [productsRes, categoriesRes] = await Promise.all([
         axios.get('https://fakestoreapi.com/products'),
         axios.get('https://fakestoreapi.com/products/categories')
@@ -451,13 +514,7 @@ app.get('/', async (req, res) => {
         err.toString()
       );
 
-      // 🔹 Fallback: load local mock data from mock-data/products.json
-      const mockPath = path.join(process.cwd(), 'mock-data', 'products.json');
-      // const mockPath = path.resolve('mock-data/products.json');
-
-      const raw = fs.readFileSync(mockPath, 'utf8');
-      const mockProducts = JSON.parse(raw);
-
+      // 🔹 Fallback: use bundled mockProducts (no fs)
       products = mockProducts;
       categories = Array.from(
         new Set(mockProducts.map((p) => p.category))
@@ -549,6 +606,63 @@ app.get('/signup', (req, res) => {
 
 
 
+// app.get('/product/:id', async (req, res) => {
+//   const token = req.cookies && req.cookies.token;
+//   if (!token) return res.redirect('/signin');
+
+//   try {
+//     jwt.verify(token, JWT_SECRET);
+//   } catch (err) {
+//     res.clearCookie('token', { path: '/' });
+//     return res.redirect('/signin');
+//   }
+
+//   const id = req.params.id;
+
+//   try {
+//     // 🔹 First try real API
+//     const productRes = await axios.get(`https://fakestoreapi.com/products/${id}`);
+//     const product = productRes.data;
+
+//     const preloadedState = { product };
+//     const appHtml = renderToString(
+//       React.createElement(App, { ssrState: preloadedState, page: 'product' })
+//     );
+//     return res.send(renderPage(appHtml, preloadedState, 'product'));
+//   } catch (err) {
+//     console.error(
+//       `Failed to fetch product ${id} from FakeStoreAPI, trying mock data:`,
+//       err.toString()
+//     );
+
+//     // 🔹 Fallback: read from mock-data/products.json
+//     try {
+//       const mockPath = path.join(process.cwd(), 'mock-data', 'products.json');
+      
+//       const raw = fs.readFileSync(mockPath, 'utf8');
+//       const mockProducts = JSON.parse(raw);
+
+//       const numericId = Number(id);
+//       const product = mockProducts.find((p) => p.id === numericId);
+
+//       if (!product) {
+//         return res.status(404).send('Not found');
+//       }
+
+//       const preloadedState = { product };
+//       const appHtml = renderToString(
+//         React.createElement(App, { ssrState: preloadedState, page: 'product' })
+//       );
+//       return res.send(renderPage(appHtml, preloadedState, 'product'));
+//     } catch (fallbackErr) {
+//       console.error('Product fallback error:', fallbackErr.toString());
+//       return res.status(404).send('Not found');
+//     }
+//   }
+// });
+
+
+
 app.get('/product/:id', async (req, res) => {
   const token = req.cookies && req.cookies.token;
   if (!token) return res.redirect('/signin');
@@ -578,32 +692,21 @@ app.get('/product/:id', async (req, res) => {
       err.toString()
     );
 
-    // 🔹 Fallback: read from mock-data/products.json
-    try {
-      const mockPath = path.join(process.cwd(), 'mock-data', 'products.json');
-      
-      const raw = fs.readFileSync(mockPath, 'utf8');
-      const mockProducts = JSON.parse(raw);
+    // 🔹 Fallback: search in bundled mockProducts
+    const numericId = Number(id);
+    const product = mockProducts.find((p) => p.id === numericId);
 
-      const numericId = Number(id);
-      const product = mockProducts.find((p) => p.id === numericId);
-
-      if (!product) {
-        return res.status(404).send('Not found');
-      }
-
-      const preloadedState = { product };
-      const appHtml = renderToString(
-        React.createElement(App, { ssrState: preloadedState, page: 'product' })
-      );
-      return res.send(renderPage(appHtml, preloadedState, 'product'));
-    } catch (fallbackErr) {
-      console.error('Product fallback error:', fallbackErr.toString());
+    if (!product) {
       return res.status(404).send('Not found');
     }
+
+    const preloadedState = { product };
+    const appHtml = renderToString(
+      React.createElement(App, { ssrState: preloadedState, page: 'product' })
+    );
+    return res.send(renderPage(appHtml, preloadedState, 'product'));
   }
 });
-
 
 
 
