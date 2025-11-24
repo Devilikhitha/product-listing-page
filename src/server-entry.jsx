@@ -452,7 +452,9 @@ app.get('/', async (req, res) => {
       );
 
       // 🔹 Fallback: load local mock data from mock-data/products.json
-      const mockPath = path.join(process.cwd(), 'mock-data', 'products.json');
+      // const mockPath = path.join(process.cwd(), 'mock-data', 'products.json');
+      const mockPath = path.resolve('mock-data/products.json');
+
       const raw = fs.readFileSync(mockPath, 'utf8');
       const mockProducts = JSON.parse(raw);
 
@@ -578,7 +580,8 @@ app.get('/product/:id', async (req, res) => {
 
     // 🔹 Fallback: read from mock-data/products.json
     try {
-      const mockPath = path.join(process.cwd(), 'mock-data', 'products.json');
+      // const mockPath = path.join(process.cwd(), 'mock-data', 'products.json');
+      const mockPath = path.resolve('mock-data/products.json');
       const raw = fs.readFileSync(mockPath, 'utf8');
       const mockProducts = JSON.parse(raw);
 
